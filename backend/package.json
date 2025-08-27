@@ -1,0 +1,22 @@
+{
+  "name": "gift-shop-ai",
+  "version": "1.0.0",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "nodemon src/server.js"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2",
+    "dotenv": "^16",
+    "express": "^4",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8",
+    "morgan": "^1",
+    "validator": "^13.15.15"
+  },
+  "devDependencies": {
+    "nodemon": "^3"
+  }
+}
