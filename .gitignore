@@ -1,30 +1,27 @@
+# Node modules và các thư mục build
 node_modules/
 dist/
 build/
 
+# Các file cấu hình môi trường
 .env
 *.env
 backend/.env
 frontend/.env
 
+# Logs
 logs/
 *.log
 .DS_Store
-# Logs
-logs
-*.log
+
+# Các file log từ các công cụ khác
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
+# Các thư mục và tệp do các editor tạo ra
 .vscode/*
 !.vscode/extensions.json
 .idea
