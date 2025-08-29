@@ -1,14 +1,23 @@
-const Product = require('../models/Product');
+const Product  = require('../models/Product');
 const Category = require('../models/Category');
 
-const toArray = v => !v ? [] : Array.isArray(v) ? v :
-  String(v).split(',').map(s => s.trim()).filter(Boolean);
+const toArray = v => !v ? [] : Array.isArray(v) ? v
+  : String(v).split(',').map(s => s.trim()).filter(Boolean);
 
-// lấy danh sách _id tất cả con của 1 category (kể cả chính nó)
+// Tạo URL ảnh tuyệt đối nếu DB lưu tương đối
+function withAbsImages(doc) {
+  const base = (process.env.APP_URL || '').replace(/\/+$/, ''); // vd http://localhost:3000
+  const imgs = (doc.hinhAnh || []).map(p =>
+    /^https?:\/\//.test(p) ? p : `${base}/${String(p).replace(/^\/+/, '')}`
+  );
+  return { ...doc, hinhAnh: imgs };
+}
+
+// Lấy tất cả con (kể cả chính nó) của 1 category
 async function getDescendantIds(rootId) {
   const cats = await Category.find({ active: true }).select('_id parentId').lean();
   const idStr = String(rootId);
-  const childrenMap = new Map(); // parentId -> [childIds]
+  const childrenMap = new Map();
   for (const c of cats) {
     const p = String(c.parentId || '');
     if (!childrenMap.has(p)) childrenMap.set(p, []);
@@ -26,17 +35,12 @@ async function getDescendantIds(rootId) {
 
 exports.list = async (req, res, next) => {
   try {
-    const {
-      q, dip, doiTuong, categoryId, categorySlug,
-      min = 0, max = 1e12, page = 1, limit = 20, sort = 'phoBien'
-    } = req.query;
+    const { q, dip, doiTuong, categoryId, categorySlug,
+      min = 0, max = 1e12, page = 1, limit = 20, sort = 'phoBien' } = req.query;
 
-    const query = {
-      active: true,
-      gia: { $gte: Number(min), $lte: Number(max) },
-    };
+    const query = { active: true, gia: { $gte: Number(min), $lte: Number(max) } };
 
-    // --- Lọc theo category (id hoặc slug), bao gồm cả con ---
+    // Lọc theo category + con
     if (categoryId || categorySlug) {
       let rootCat = null;
       if (categoryId && /^[0-9a-fA-F]{24}$/.test(categoryId)) {
@@ -44,14 +48,12 @@ exports.list = async (req, res, next) => {
       } else if (categorySlug) {
         rootCat = await Category.findOne({ slug: categorySlug }).select('_id').lean();
       }
-      if (!rootCat) {
-        return res.json({ items: [], total: 0, page: Number(page)||1, limit: Number(limit)||20 });
-      }
+      if (!rootCat) return res.json({ items: [], total: 0, page: Number(page)||1, limit: Number(limit)||20 });
       const ids = await getDescendantIds(rootCat._id);
       query.categoryId = { $in: ids };
     }
 
-    // --- Lọc facets ---
+    // Facets
     const dipArr = toArray(dip);
     const dtArr  = toArray(doiTuong);
     const ors = [];
@@ -62,10 +64,10 @@ exports.list = async (req, res, next) => {
     if (q) query.$text = { $search: q };
 
     const sortMap = {
-      phoBien:  { diemPhoBien: -1, _id: -1 },
-      giaAsc:   { gia: 1  },
-      giaDesc:  { gia: -1 },
-      moiNhat:  { createdAt: -1 },
+      phoBien: { diemPhoBien: -1, _id: -1 },
+      giaAsc:  { gia: 1 },
+      giaDesc: { gia: -1 },
+      moiNhat: { createdAt: -1 },
     };
     const sortSpec = sortMap[sort] || sortMap.phoBien;
 
@@ -78,7 +80,7 @@ exports.list = async (req, res, next) => {
       Product.countDocuments(query),
     ]);
 
-    res.json({ items, total, page: pageNum, limit: limitNum });
+    res.json({ items: items.map(withAbsImages), total, page: pageNum, limit: limitNum });
   } catch (err) { next(err); }
 };
 
@@ -86,7 +88,7 @@ exports.detail = async (req, res, next) => {
   try {
     const item = await Product.findById(req.params.id).lean();
     if (!item) return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
-    res.json(item);
+    res.json(withAbsImages(item));
   } catch (err) { next(err); }
 };
 
@@ -96,7 +98,7 @@ exports.create = async (req, res, next) => {
     if (!ten || gia == null) return res.status(400).json({ message: 'Thiếu trường bắt buộc: ten, gia' });
     if (Number(gia) < 0)     return res.status(422).json({ message: 'Giá phải >= 0' });
     const product = await Product.create(req.body);
-    res.status(201).json(product);
+    res.status(201).json(withAbsImages(product.toObject()));
   } catch (err) { next(err); }
 };
 
@@ -106,11 +108,10 @@ exports.update = async (req, res, next) => {
       return res.status(422).json({ message: 'Giá phải >= 0' });
 
     const product = await Product.findByIdAndUpdate(
-      req.params.id, req.body, { new: true, runValidators: true }
-    ).lean();
-
+      req.params.id, req.body, { new: true, runValidators: true, lean: true }
+    );
     if (!product) return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
-    res.json(product);
+    res.json(withAbsImages(product));
   } catch (err) { next(err); }
 };
 

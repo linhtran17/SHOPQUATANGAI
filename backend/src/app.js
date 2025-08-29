@@ -2,11 +2,13 @@
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+
 const { authOptional } = require('./middleware/auth');
 const categoryRoutes = require('./router/categoryRoutes');  
 const productRoutes = require('./router/productRoutes');
 const notFound = require('./middleware/notFound');
 const errorHandler = require('./middleware/errorHandler');
+const path = require('path');
 
 
 const app = express();
@@ -24,7 +26,7 @@ app.use('/api/orders', require('./router/orderRoutes'));
 app.use('/api/discounts', require('./router/discountRoutes'));
 app.use('/api/payments', require('./router/paymentRoutes'));
 app.use('/api/checkout', require('./router/checkoutRoutes'));
-
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 
 
