@@ -1,23 +1,79 @@
+// backend/src/scripts/seedDiscounts.js
 require('dotenv').config();
 const mongoose = require('mongoose');
-const Discount = require('../src/models/Discount');
+const Discount = require('../models/Discount');
+
+async function upsert(code, data) {
+  await Discount.updateOne(
+    { code },
+    { $setOnInsert: { code }, $set: data },
+    { upsert: true }
+  );
+}
 
 (async () => {
-  await mongoose.connect(process.env.MONGODB_URI || process.env.MONGO_URI);
+  if (!process.env.MONGODB_URI) {
+    console.error('Missing MONGODB_URI in .env');
+    process.exit(1);
+  }
 
-  await Discount.deleteMany({});
+  await mongoose.connect(process.env.MONGODB_URI);
 
-  await Discount.insertMany([
-    // Voucher ĐƠN HÀNG
-    { code: 'TET10',   target: 'order',   type: 'percent', value: 10, minOrder: 200000, maxDiscount: 50000, usageLimit: 100, isPublic: true, active: true },
-    { code: 'GIAM50K', target: 'order',   type: 'fixed',   value: 50000, minOrder: 300000, usageLimit: 0,   isPublic: true, active: true },
+  const now = new Date();
+  const end = new Date(now.getFullYear(), now.getMonth() + 6, now.getDate()); // +6 tháng
 
-    // Voucher FREESHIP (áp vào phí ship)
-    { code: 'FREESHIP',  target: 'shipping', type: 'fixed',   value: 15000, maxDiscount: 15000, usageLimit: 0, isPublic: true, active: true },
-    // nếu muốn freeship theo %, ví dụ giảm 50% phí ship tối đa 20k:
-    // { code: 'FREESHIP50', target: 'shipping', type: 'percent', value: 50, maxDiscount: 20000, usageLimit: 0, isPublic: true, active: true },
-  ]);
+  // Đơn từ 200k giảm 10k
+  await upsert('ORDER_10K', {
+    label: 'Giảm 10K (đơn từ 200K)',
+    target: 'order',      // 👈 theo model của bạn
+    type: 'fixed',        // fixed | percent
+    value: 10000,         // số tiền hoặc %
+    maxDiscount: undefined,
+    minOrder: 200000,
+    startAt: now,
+    endAt: end,
+    usageLimit: 0,        // 0 = không giới hạn
+    usedCount: 0,
+    perUserLimit: 0,      // 0 = không giới hạn
+    isPublic: true,
+    active: true,
+  });
 
-  console.log('✅ Seed discounts xong');
+  // Mặc định có giảm 1k (đơn nhỏ)
+  await upsert('ORDER_1K', {
+    label: 'Giảm 1K',
+    target: 'order',
+    type: 'fixed',
+    value: 1000,
+    maxDiscount: undefined,
+    minOrder: 0,
+    startAt: now,
+    endAt: end,
+    usageLimit: 0,
+    usedCount: 0,
+    perUserLimit: 0,
+    isPublic: true,
+    active: true,
+  });
+
+  // Freeship 1 lần đầu (tối đa 30k)
+  await upsert('FREESHIP_FIRST', {
+    label: 'Freeship đơn đầu (tối đa 30K)',
+    target: 'shipping',
+    type: 'fixed',
+    value: 30000,         // miễn tối đa 30k (server sẽ min với phí ship thực tế)
+    maxDiscount: undefined,
+    minOrder: 0,
+    startAt: now,
+    endAt: end,
+    usageLimit: 0,
+    usedCount: 0,
+    perUserLimit: 1,      // mỗi user 1 lần
+    isPublic: true,
+    active: true,
+  });
+
+  console.log('Seeded discounts ✔');
+  await mongoose.disconnect();
   process.exit(0);
 })();

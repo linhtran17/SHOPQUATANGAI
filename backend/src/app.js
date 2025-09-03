@@ -29,11 +29,6 @@ app.use('/api/checkout', require('./router/checkoutRoutes'));
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 
-
-
-
-
-
 app.get('/health', (_, res) => res.json({ ok: true }));
 
 app.use(notFound);

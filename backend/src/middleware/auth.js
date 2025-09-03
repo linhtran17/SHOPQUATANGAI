@@ -7,9 +7,11 @@ function authOptional(req, _res, next) {
     if (token) {
       const p = jwt.verify(token, process.env.JWT_SECRET);
       req.user = { _id: p.sub, role: p.role, email: p.email };
+      next();
     }
-  } catch {}
-  next();
+  } catch (e) {
+    next(e)
+  }
 }
 function requireAuth(req, res, next) {
   if (!req.user) return res.status(401).json({ message: 'Cần đăng nhập' });

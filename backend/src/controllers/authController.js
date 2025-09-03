@@ -1,15 +1,18 @@
+import { resSussess } from '../utils/res.api';
+
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const validator = require('validator');
 const User = require('../models/User');
 
-const sign = (u) => jwt.sign(
+export const sign = (u) => jwt.sign(
   { sub: String(u._id), role: u.role, email: u.email },
   process.env.JWT_SECRET,
   { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
 );
 
-exports.register = async (req, res, next) => {
+// Đảm bảo bạn export đúng cách với CommonJS
+export const register = async (req, res, next) => {
   try {
     const { email, password, name } = req.body;
     if (!validator.isEmail(String(email || '')))
@@ -27,7 +30,7 @@ exports.register = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
-exports.login = async (req, res, next) => {
+export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email: String(email).toLowerCase() });
@@ -40,6 +43,16 @@ exports.login = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
-exports.me = async (req, res) => {
-  res.json({ user: req.user || null });
+export const me = async (req, res) => {
+  resSussess(res, { user: req.user || null })
+};
+
+// Đảm bảo bạn export đúng cách
+export default { /// <==> module.exports = {}
+  register,
+  login,
+  me,
+  logout: (req, res) => {
+    res.json({ status: true })
+  }
 };

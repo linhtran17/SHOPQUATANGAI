@@ -1,68 +1,114 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+/* Tailwind v4 */
+@import "tailwindcss";
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* Base */
+@layer base {
+  html { scroll-behavior: smooth; }
+  body { @apply bg-pink-50/30 text-slate-800 font-sans; }
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
+/* Helpers */
+@layer utilities {
+  .container { @apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8; }
 
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+  /* Line clamp (thay plugin) */
+  .line-clamp-1,.line-clamp-2,.line-clamp-3,.line-clamp-4,.line-clamp-5,.line-clamp-6{
+    display:-webkit-box; -webkit-box-orient:vertical; overflow:hidden;
   }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+  .line-clamp-1{-webkit-line-clamp:1}.line-clamp-2{-webkit-line-clamp:2}
+  .line-clamp-3{-webkit-line-clamp:3}.line-clamp-4{-webkit-line-clamp:4}
+  .line-clamp-5{-webkit-line-clamp:5}.line-clamp-6{-webkit-line-clamp:6}
 }
+
+/* Components (tone hồng) */
+@layer components {
+  .btn         { @apply inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium shadow-sm transition hover:shadow; }
+  .btn-primary { @apply border-pink-600 bg-pink-600 text-white hover:bg-pink-700; }
+  .btn-ghost   { @apply bg-transparent; }
+  .btn-outline { @apply border-pink-600 text-pink-700 hover:bg-pink-50; }
+
+  .card        { @apply rounded-2xl border border-slate-200 bg-white shadow-sm transition; }
+  .card-hover  { @apply hover:shadow-xl hover:-translate-y-0.5; }
+
+  .nav-link    { @apply px-3 py-2 rounded-xl text-slate-600 hover:bg-pink-50 hover:text-slate-900 transition; }
+  .nav-active  { @apply bg-pink-100 text-slate-900; }
+
+  .chip        { @apply inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-600 hover:bg-pink-50 hover:text-slate-900 transition; }
+
+  .badge-sale  { @apply absolute left-2 top-2 rounded-full bg-pink-600 px-2 py-0.5 text-[11px] font-bold tracking-wide text-white shadow; }
+
+  .section-title { @apply mb-4 text-xl font-extrabold tracking-tight text-slate-900; }
+  .price       { @apply text-pink-600 font-extrabold; }
+}
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar{display:none}
+  .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
+}
+/* ====== Banner autoplay (CSS-only) ====== */
+@keyframes banner-fade {
+  0%,16%   { opacity:1 }
+  20%,100% { opacity:0 }
+}
+@keyframes banner-zoom {
+  0%,16%   { transform:scale(1.04) }
+  20%,100% { transform:scale(1) }
+}
+@keyframes banner-bar {
+  0%       { transform-origin:left; transform:scaleX(0) }
+  16%      { transform:scaleX(1) }
+  20%,100% { transform:scaleX(0) }
+}
+
+/* khung banner */
+.banner {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem; /* rounded-2xl */
+  border: 1px solid rgb(252 231 243 / 1); /* border-pink-100 */
+  background: white;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.06);
+}
+
+/* mỗi slide chồng lên nhau, ẩn/hiện theo animation */
+.banner-slide {
+  position: absolute; inset: 0;
+  opacity: 0;
+  animation: banner-fade 30s infinite;
+}
+.banner-slide img {
+  width: 100%; height: 100%; object-fit: cover;
+  animation: banner-zoom 30s infinite;
+}
+
+/* 6 slide, mỗi cái trễ 5s → tổng 30s/chu kỳ */
+.banner-slide:nth-child(1) { animation-delay: 0s  }
+.banner-slide:nth-child(2) { animation-delay: 5s  }
+.banner-slide:nth-child(3) { animation-delay: 10s }
+.banner-slide:nth-child(4) { animation-delay: 15s }
+.banner-slide:nth-child(5) { animation-delay: 20s }
+.banner-slide:nth-child(6) { animation-delay: 25s }
+
+/* timeline (6 thanh) */
+.banner-dots {
+  position: absolute; left: 0; right: 0; bottom: .5rem;
+  display: flex; justify-content: center; gap: .5rem;
+  padding: 0 .5rem;
+}
+.banner-dot {
+  height: .375rem; /* h-1.5 */
+  width: 4rem;
+  border-radius: 9999px; background: rgba(255,255,255,.6);
+  overflow: hidden;
+}
+.banner-dot::after {
+  content: ""; display: block; height: 100%;
+  background: #db2777; /* pink-600 */
+  transform: scaleX(0);
+  animation: banner-bar 30s infinite linear;
+}
+.banner-dot:nth-child(1)::after { animation-delay: 0s  }
+.banner-dot:nth-child(2)::after { animation-delay: 5s  }
+.banner-dot:nth-child(3)::after { animation-delay: 10s }
+.banner-dot:nth-child(4)::after { animation-delay: 15s }
+.banner-dot:nth-child(5)::after { animation-delay: 20s }
+.banner-dot:nth-child(6)::after { animation-delay: 25s }
