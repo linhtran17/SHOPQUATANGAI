@@ -1,10 +1,15 @@
-const router = require('express').Router();
-const ctrl = require('../controllers/productController');
+// backend/src/router/productRoutes.js
+const express = require('express');
+const c = require('../controllers/productController');
+const requireAuth = require('../middleware/requireAuth.db');
+const authorize = require('../middleware/authorize');
 
-router.get('/',      ctrl.list);
-router.get('/:id',   ctrl.detail);
-router.post('/',     ctrl.create);
-router.put('/:id',   ctrl.update);
-router.delete('/:id',ctrl.remove);
+const r = express.Router();
 
-module.exports = router;
+r.get('/', c.list);                              // public
+r.get('/:id', c.detail);                         // public
+r.post('/', requireAuth, authorize('product:create'), c.create);
+r.put('/:id', requireAuth, authorize('product:update'), c.update);
+r.delete('/:id', requireAuth, authorize('product:delete'), c.remove);
+
+module.exports = r;

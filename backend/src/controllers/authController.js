@@ -1,58 +1,63 @@
-import { resSussess } from '../utils/res.api';
-
+// backend/src/controllers/authController.js
+const { resSuccess, resError } = require('../utils/res.api');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const validator = require('validator');
 const User = require('../models/User');
 
-export const sign = (u) => jwt.sign(
-  { sub: String(u._id), role: u.role, email: u.email },
-  process.env.JWT_SECRET,
-  { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-);
+function sign(user) {
+  return jwt.sign(
+    { sub: String(user._id), role: user.role, email: user.email, tokv: user.tokenVersion || 0 },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+  );
+}
 
-// Đảm bảo bạn export đúng cách với CommonJS
-export const register = async (req, res, next) => {
+function sanitizeUser(u) {
+  return { _id: String(u._id), email: u.email, name: u.name, role: u.role, roles: u.roles };
+}
+
+async function register(req, res, next) {
   try {
-    const { email, password, name } = req.body;
-    if (!validator.isEmail(String(email || '')))
-      return res.status(400).json({ message: 'Email không hợp lệ' });
-    if (!password || String(password).length < 6)
-      return res.status(400).json({ message: 'Mật khẩu tối thiểu 6 ký tự' });
+    const email = (req.body.email || '').toString().trim().toLowerCase();
+    const password = (req.body.password || '').toString();
+    const name = (req.body.name || '').toString().trim();
 
-    const existed = await User.findOne({ email: String(email).toLowerCase() });
-    if (existed) return res.status(409).json({ message: 'Email đã tồn tại' });
+    if (!validator.isEmail(email)) return resError(res, 'Email không hợp lệ', 400);
+    if (!password || password.length < 6) return resError(res, 'Mật khẩu tối thiểu 6 ký tự', 400);
+
+    const existed = await User.findOne({ email });
+    if (existed) return resError(res, 'Email đã tồn tại', 409);
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const user = await User.create({ email, passwordHash, name });
+    const user = await User.create({ email, passwordHash, name, roles: ['user'] });
     const token = sign(user);
-    res.status(201).json({ token, user: { _id: user._id, email: user.email, name: user.name, role: user.role } });
-  } catch (e) { next(e); }
-};
+    return res.status(201).json({ token, user: sanitizeUser(user) });
+  } catch (err) { return next(err); }
+}
 
-export const login = async (req, res, next) => {
+async function login(req, res, next) {
   try {
-    const { email, password } = req.body;
-    const user = await User.findOne({ email: String(email).toLowerCase() });
-    if (!user) return res.status(401).json({ message: 'Sai email hoặc mật khẩu' });
+    const email = (req.body.email || '').toString().trim().toLowerCase();
+    const password = (req.body.password || '').toString();
+
+    const user = await User.findOne({ email });
+    if (!user) return resError(res, 'Sai email hoặc mật khẩu', 401);
+
     const ok = await bcrypt.compare(password, user.passwordHash);
-    if (!ok) return res.status(401).json({ message: 'Sai email hoặc mật khẩu' });
+    if (!ok) return resError(res, 'Sai email hoặc mật khẩu', 401);
 
     const token = sign(user);
-    res.json({ token, user: { _id: user._id, email: user.email, name: user.name, role: user.role } });
-  } catch (e) { next(e); }
-};
+    return resSuccess(res, { token, user: sanitizeUser(user) });
+  } catch (err) { return next(err); }
+}
 
-export const me = async (req, res) => {
-  resSussess(res, { user: req.user || null })
-};
+function me(req, res) {
+  return resSuccess(res, { user: req.user || null });
+}
 
-// Đảm bảo bạn export đúng cách
-export default { /// <==> module.exports = {}
-  register,
-  login,
-  me,
-  logout: (req, res) => {
-    res.json({ status: true })
-  }
-};
+function logout(_req, res) {
+  return resSuccess(res, { status: true });
+}
+
+module.exports = { register, login, me, logout, sign };

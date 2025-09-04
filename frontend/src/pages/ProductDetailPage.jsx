@@ -1,35 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import productService from '../services/productService';  // Default import
-
+import productService from '../services/productService';
 import ProductDetail from '../features/product/ProductDetail';
 
-const ProductDetailPage = () => {
+export default function ProductDetailPage() {
   const { id } = useParams();
   const [product, setProduct] = useState(null);
+  const [err, setErr] = useState('');
 
   useEffect(() => {
-    const fetchProduct = async () => {
+    (async () => {
       try {
-        const data = await productService.detail(id);  // Gọi API từ productService
+        const data = await productService.detail(id);
         setProduct(data);
-      } catch (error) {
-        console.error("Error fetching product:", error);
+      } catch (e) {
+        setErr(e?.response?.data?.message || 'Không tải được sản phẩm');
       }
-    };
-    fetchProduct();
+    })();
   }, [id]);
 
-  return (
-    <div>
-      <h1>Product Details</h1>
-      {product ? (
-        <ProductDetail product={product} />
-      ) : (
-        <p>Loading...</p>
-      )}
-    </div>
-  );
-};
-
-export default ProductDetailPage;  // Default export
+  if (err) return <div className="text-red-600">{err}</div>;
+  return <ProductDetail product={product} />;
+}

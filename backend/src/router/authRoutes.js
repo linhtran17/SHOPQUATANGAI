@@ -1,9 +1,12 @@
-const router = require('express').Router();
+// backend/src/router/authRoutes.js
+const express = require('express');
+const { authOptional } = require('../middleware/auth');
 const c = require('../controllers/authController');
-const { authOptional, requireAuth } = require('../middleware/auth');
+const r = express.Router();
 
-router.post('/register', c.register);
-router.post('/login', c.login);
-router.get('/me', authOptional, requireAuth, c.me);
+r.post('/register', c.register);
+r.post('/login', c.login);
+r.get('/me', authOptional, c.me);
+r.post('/logout', authOptional, c.logout);
 
-module.exports = router;
+module.exports = r;

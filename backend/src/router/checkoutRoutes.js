@@ -1,9 +1,9 @@
-// src/router/checkoutRoutes.js
+// backend/src/router/checkoutRoutes.js
 const router = require('express').Router();
 const c = require('../controllers/checkoutController');
-const { requireAuth } = require('../middleware/auth');
+const requireAuth = require('../middleware/requireAuth.db');
 
-router.post('/preview', requireAuth, c.preview);  // gửi address vào body
-router.post('/confirm', requireAuth, c.confirm);  // address + apply {orderCode, shipCode}
+router.post('/preview', requireAuth, c.preview);
+router.post('/confirm', requireAuth, c.confirm);
 
 module.exports = router;

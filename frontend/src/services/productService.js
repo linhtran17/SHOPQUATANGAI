@@ -1,14 +1,15 @@
+// src/services/productService.js
 import api from './api';
 
-const productApi = {
+const productService = {
   async list(params = {}) {
     const { data } = await api.get('/products', { params });
-    return data;
+    return data; // { items, total, page, limit }
   },
   async detail(id) {
     const { data } = await api.get(`/products/${id}`);
-    return data;
-  }
+    return data; // 1 product
+  },
 };
 
-export default productApi;  // Default export
+export default productService;

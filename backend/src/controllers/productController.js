@@ -1,3 +1,4 @@
+// backend/src/controllers/productsController.js
 const Product  = require('../models/Product');
 const Category = require('../models/Category');
 
@@ -40,7 +41,7 @@ exports.list = async (req, res, next) => {
 
     const query = { active: true, gia: { $gte: Number(min), $lte: Number(max) } };
 
-    // Lọc theo category + con
+    // Lọc category + con
     if (categoryId || categorySlug) {
       let rootCat = null;
       if (categoryId && /^[0-9a-fA-F]{24}$/.test(categoryId)) {
