@@ -19,4 +19,7 @@ CategorySchema.pre('validate', function(next) {
   next();
 });
 
+CategorySchema.index({ parentId: 1, active: 1 });
+
 module.exports = model('Category', CategorySchema);
+module.exports.toSlug = toSlug;

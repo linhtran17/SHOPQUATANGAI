@@ -1,20 +1,18 @@
-// backend/src/controllers/productsController.js
 const Product  = require('../models/Product');
 const Category = require('../models/Category');
 
 const toArray = v => !v ? [] : Array.isArray(v) ? v
   : String(v).split(',').map(s => s.trim()).filter(Boolean);
 
-// Tạo URL ảnh tuyệt đối nếu DB lưu tương đối
-function withAbsImages(doc) {
-  const base = (process.env.APP_URL || '').replace(/\/+$/, ''); // vd http://localhost:3000
+function withAbsImages(doc, req) {
+  const fallbackBase = `${req.protocol}://${req.get('host')}`;
+  const base = (process.env.APP_URL || fallbackBase).replace(/\/+$/, '');
   const imgs = (doc.hinhAnh || []).map(p =>
     /^https?:\/\//.test(p) ? p : `${base}/${String(p).replace(/^\/+/, '')}`
   );
   return { ...doc, hinhAnh: imgs };
 }
 
-// Lấy tất cả con (kể cả chính nó) của 1 category
 async function getDescendantIds(rootId) {
   const cats = await Category.find({ active: true }).select('_id parentId').lean();
   const idStr = String(rootId);
@@ -37,11 +35,15 @@ async function getDescendantIds(rootId) {
 exports.list = async (req, res, next) => {
   try {
     const { q, dip, doiTuong, categoryId, categorySlug,
-      min = 0, max = 1e12, page = 1, limit = 20, sort = 'phoBien' } = req.query;
+      min = 0, max = 1e12, page = 1, limit = 20, sort = 'phoBien', all } = req.query;
 
-    const query = { active: true, gia: { $gte: Number(min), $lte: Number(max) } };
+    const seeAll  = String(all || '') === '1';
+    const isAdmin = req.user?.role === 'admin';
 
-    // Lọc category + con
+    const query = { gia: { $gte: Number(min), $lte: Number(max) } };
+    // Public chỉ thấy active=true; admin + all=1 thấy tất cả
+    if (!(seeAll && isAdmin)) query.active = true;
+
     if (categoryId || categorySlug) {
       let rootCat = null;
       if (categoryId && /^[0-9a-fA-F]{24}$/.test(categoryId)) {
@@ -49,12 +51,13 @@ exports.list = async (req, res, next) => {
       } else if (categorySlug) {
         rootCat = await Category.findOne({ slug: categorySlug }).select('_id').lean();
       }
-      if (!rootCat) return res.json({ items: [], total: 0, page: Number(page)||1, limit: Number(limit)||20 });
+      if (!rootCat) {
+        return res.json({ items: [], total: 0, page: Number(page)||1, limit: Number(limit)||20 });
+      }
       const ids = await getDescendantIds(rootCat._id);
       query.categoryId = { $in: ids };
     }
 
-    // Facets
     const dipArr = toArray(dip);
     const dtArr  = toArray(doiTuong);
     const ors = [];
@@ -81,7 +84,10 @@ exports.list = async (req, res, next) => {
       Product.countDocuments(query),
     ]);
 
-    res.json({ items: items.map(withAbsImages), total, page: pageNum, limit: limitNum });
+    res.json({
+      items: items.map(it => withAbsImages(it, req)),
+      total, page: pageNum, limit: limitNum
+    });
   } catch (err) { next(err); }
 };
 
@@ -89,7 +95,12 @@ exports.detail = async (req, res, next) => {
   try {
     const item = await Product.findById(req.params.id).lean();
     if (!item) return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
-    res.json(withAbsImages(item));
+
+    const isAdmin = req.user?.role === 'admin';
+    if (!isAdmin && item.active === false) {
+      return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
+    }
+    res.json(withAbsImages(item, req));
   } catch (err) { next(err); }
 };
 
@@ -98,8 +109,9 @@ exports.create = async (req, res, next) => {
     const { ten, gia } = req.body;
     if (!ten || gia == null) return res.status(400).json({ message: 'Thiếu trường bắt buộc: ten, gia' });
     if (Number(gia) < 0)     return res.status(422).json({ message: 'Giá phải >= 0' });
+
     const product = await Product.create(req.body);
-    res.status(201).json(withAbsImages(product.toObject()));
+    res.status(201).json(withAbsImages(product.toObject(), req));
   } catch (err) { next(err); }
 };
 
@@ -112,7 +124,21 @@ exports.update = async (req, res, next) => {
       req.params.id, req.body, { new: true, runValidators: true, lean: true }
     );
     if (!product) return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
-    res.json(withAbsImages(product));
+    res.json(withAbsImages(product, req));
+  } catch (err) { next(err); }
+};
+
+// 🔥 Bật/Tắt trạng thái – KHÔNG XOÁ
+exports.setActive = async (req, res, next) => {
+  try {
+    const { active } = req.body;
+    const product = await Product.findByIdAndUpdate(
+      req.params.id,
+      { active: !!active },
+      { new: true, runValidators: true, lean: true }
+    );
+    if (!product) return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
+    res.json(withAbsImages(product, req));
   } catch (err) { next(err); }
 };
 

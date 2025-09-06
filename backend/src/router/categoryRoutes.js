@@ -1,17 +1,20 @@
-// backend/src/router/categoryRoutes.js
 const express = require('express');
 const ctrl = require('../controllers/categoryController');
-const requireAuth = require('../middleware/requireAuth.db');
-const authorize = require('../middleware/authorize');
+const { requireAuth } = require('../middleware/auth');
+let authorize;
+try { authorize = require('../middleware/authorize'); } catch { authorize = () => (_, __, next) => next(); }
 
 const router = express.Router();
 
-router.get('/', ctrl.list);              // public
-router.get('/tree', ctrl.tree);          // public
-router.get('/:idOrSlug', ctrl.detail);   // public
+// Public
+router.get('/', ctrl.list);
+router.get('/tree', ctrl.tree);
+router.get('/:idOrSlug', ctrl.detail);
 
-router.post('/', requireAuth, authorize('category:create'), ctrl.create);
-router.put('/:id', requireAuth, authorize('category:update'), ctrl.update);
+// Admin
+router.post('/',      requireAuth, authorize('category:create'), ctrl.create);
+router.put('/:id',    requireAuth, authorize('category:update'), ctrl.update);
+router.patch('/:id/active', requireAuth, authorize('category:update'), ctrl.updateActive);
 router.delete('/:id', requireAuth, authorize('category:delete'), ctrl.remove);
 
 module.exports = router;

@@ -1,6 +1,7 @@
 // backend/src/router/discountRoutes.js
 const router = require('express').Router();
-const requireAuth = require('../middleware/requireAuth.db');
+// Đúng
+const { requireAuth } = require('../middleware/auth');
 const c = require('../controllers/discountController');
 
 router.get('/available', requireAuth, c.available);

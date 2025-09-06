@@ -1,4 +1,5 @@
 const Category = require('../models/Category');
+const { toSlug } = require('../models/Category');
 
 // Helper: build tree từ mảng phẳng
 function buildTree(rows) {
@@ -11,6 +12,21 @@ function buildTree(rows) {
     } else roots.push(node);
   }
   return roots;
+}
+
+// Kiểm tra parentId mới có tạo vòng lặp không (leo lên cha dần dần)
+async function ensureNoCycle(currentId, parentId) {
+  if (!parentId) return;
+  if (String(parentId) === String(currentId)) {
+    const err = new Error('parentId không được là chính nó'); err.status = 400; throw err;
+  }
+  let cursor = await Category.findById(parentId).select('parentId').lean();
+  while (cursor) {
+    if (String(cursor._id) === String(currentId)) {
+      const e = new Error('parentId tạo vòng lặp cây danh mục'); e.status = 400; throw e;
+    }
+    cursor = cursor.parentId ? await Category.findById(cursor.parentId).select('parentId').lean() : null;
+  }
 }
 
 // GET /api/categories?active=true
@@ -44,15 +60,23 @@ exports.detail = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
-// POST /api/categories  { name, parentId?, slug? }
+// POST /api/categories  { name, parentId?, slug?, active? }
 exports.create = async (req, res, next) => {
   try {
     const { name, parentId, slug, active } = req.body;
     if (!name) return res.status(400).json({ message: 'Thiếu trường name' });
-    if (parentId && String(parentId) === String(req.body._id))
-      return res.status(400).json({ message: 'parentId không được trỏ tới chính nó' });
 
-    const doc = await Category.create({ name, parentId: parentId || null, slug, active });
+    if (parentId) {
+      const parent = await Category.findById(parentId).lean();
+      if (!parent) return res.status(400).json({ message: 'parentId không hợp lệ' });
+    }
+
+    const doc = await Category.create({
+      name,
+      parentId: parentId || null,
+      slug: slug || toSlug(name),
+      active: active !== undefined ? !!active : true
+    });
     res.status(201).json(doc);
   } catch (e) {
     if (e.code === 11000) return res.status(409).json({ message: 'Slug đã tồn tại' });
@@ -64,11 +88,15 @@ exports.create = async (req, res, next) => {
 exports.update = async (req, res, next) => {
   try {
     const { id } = req.params;
-    if (req.body.parentId && String(req.body.parentId) === String(id))
-      return res.status(400).json({ message: 'parentId không được trỏ tới chính nó' });
 
-    const cat = await Category.findByIdAndUpdate(id, req.body, {
-      new: true, runValidators: true,
+    // tự sinh slug nếu client đổi name nhưng không gửi slug
+    const payload = { ...req.body };
+    if (!payload.slug && payload.name) payload.slug = toSlug(payload.name);
+
+    if (payload.parentId) await ensureNoCycle(id, payload.parentId);
+
+    const cat = await Category.findByIdAndUpdate(id, payload, {
+      new: true, runValidators: true
     }).lean();
 
     if (!cat) return res.status(404).json({ message: 'Không tìm thấy danh mục' });
@@ -79,8 +107,19 @@ exports.update = async (req, res, next) => {
   }
 };
 
+// PATCH /api/categories/:id/active  { active: boolean }
+exports.updateActive = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { active } = req.body;
+    const cat = await Category.findByIdAndUpdate(id, { active: !!active }, { new: true }).lean();
+    if (!cat) return res.status(404).json({ message: 'Không tìm thấy danh mục' });
+    res.json(cat);
+  } catch (e) { next(e); }
+};
+
 // DELETE /api/categories/:id
-// Gợi ý: chỉ xoá khi không có child; thật tế nên soft-delete (active=false)
+// chỉ xoá khi không có child; thực tế có thể soft-delete bằng active=false
 exports.remove = async (req, res, next) => {
   try {
     const child = await Category.findOne({ parentId: req.params.id }).lean();

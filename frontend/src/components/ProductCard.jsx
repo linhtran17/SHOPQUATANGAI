@@ -46,7 +46,7 @@ export default function ProductCard({ p }) {
               onClick={() => addItem(p)}
               disabled={isBusy}
             >
-              {isBusy ? "Đang thêm..." : "Thêm giỏ"}
+              {isBusy ? "Đang thêm..." : "Chọn quà này"}
             </button>
           </div>
         </div>

@@ -5,6 +5,7 @@ const morgan = require('morgan');
 const path = require('path');
 
 const { authOptional } = require('./middleware/auth');
+
 const notFound = require('./middleware/notFound');
 const errorHandler = require('./middleware/errorHandler');
 
@@ -28,6 +29,8 @@ app.use('/api/orders',    require('./router/orderRoutes'));
 app.use('/api/discounts', require('./router/discountRoutes'));
 app.use('/api/payments',  require('./router/paymentRoutes'));
 app.use('/api/checkout',  require('./router/checkoutRoutes'));
+app.use('/api/uploads', require('./router/uploadRoutes'));
+app.use('/api/inventory', require('./router/inventoryRoutes'));
 
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 

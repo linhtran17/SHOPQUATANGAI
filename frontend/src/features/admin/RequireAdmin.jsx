@@ -1,31 +1,32 @@
-import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
-import authApi from '../../services/authService';
+import React, { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
+import authApi from "../../services/authService";
 
 export default function RequireAdmin({ children }) {
-  const [state, setState] = useState({ checking: true, ok: false });
+  const [state, setState] = useState({ checking: true, allow: false });
 
   useEffect(() => {
-    let mounted = true;
-    const token = localStorage.getItem('token');
-    if (!token) { setState({ checking: false, ok: false }); return; }
+    const token = localStorage.getItem("token");
+    if (!token) return setState({ checking: false, allow: false });
 
     (async () => {
       try {
         const me = await authApi.me(); // { _id, email, name, role }
-        if (!mounted) return;
-        setState({ checking: false, ok: me?.role === 'admin' });
+        setState({ checking: false, allow: me?.role === "admin" });
       } catch {
-        if (!mounted) return;
-        setState({ checking: false, ok: false });
+        setState({ checking: false, allow: false });
       }
     })();
-
-    return () => { mounted = false; };
   }, []);
 
-  if (state.checking) return <div className="p-6">Đang kiểm tra quyền…</div>;
-  if (!state.ok) return <Navigate to="/" replace />;
+  if (state.checking) {
+    return (
+      <div className="min-h-screen grid place-items-center">
+        <div className="text-sm text-slate-500">Đang kiểm tra quyền…</div>
+      </div>
+    );
+  }
+  if (!state.allow) return <Navigate to="/" replace />;
 
   return children;
 }
